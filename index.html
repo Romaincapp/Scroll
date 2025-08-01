@@ -18,10 +18,10 @@
             min-height: 100vh;
         }
 
-        /* Conteneur principal - 3x la hauteur de l'écran */
+        /* Conteneur principal - Plus grand pour scroll plus lent */
         .video-scroll-container {
             position: relative;
-            height: 300vh;
+            height: 500vh; /* 5x la hauteur = scroll plus lent et fluide */
             margin: 20px;
             border-radius: 25px;
             overflow: hidden;
@@ -119,6 +119,17 @@
             z-index: 10;
             opacity: 0;
             animation: fadeIn 1s ease-out 2s forwards, bounce 2s ease-in-out 3s infinite;
+            transition: opacity 0.3s ease;
+        }
+
+        .scroll-hint.loading {
+            opacity: 1;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .scroll-hint.ready {
+            opacity: 1;
+            animation: fadeIn 1s ease-out forwards, bounce 2s ease-in-out 1s infinite;
         }
 
         @keyframes slideInUp {
@@ -235,8 +246,8 @@
         </div>
 
         <!-- Indication de scroll -->
-        <div class="scroll-hint">
-            ↓ Faites défiler pour explorer
+        <div class="scroll-hint loading" id="scrollHint">
+            📼 Chargement de l'expérience...
         </div>
     </section>
 
@@ -245,6 +256,7 @@
             constructor() {
                 this.video = document.getElementById('backgroundVideo');
                 this.container = document.getElementById('videoContainer');
+                this.scrollHint = document.getElementById('scrollHint');
                 
                 this.isVideoLoaded = false;
                 this.lastScrollTime = 0;
@@ -264,21 +276,34 @@
                 // Logs de debug
                 console.log('Initialisation du contrôleur vidéo...');
                 
-                // Attendre que la vidéo soit chargée
+                // Preloading agressif
                 this.video.addEventListener('loadedmetadata', () => {
                     this.isVideoLoaded = true;
                     console.log('✅ Vidéo chargée ! Durée:', this.video.duration, 'secondes');
                     this.cacheContainerDimensions();
+                    // Précharger plusieurs secondes
+                    this.video.currentTime = 0;
+                    setTimeout(() => {
+                        this.video.currentTime = this.video.duration * 0.1; // 10%
+                        setTimeout(() => {
+                            this.video.currentTime = this.video.duration * 0.5; // 50%
+                            setTimeout(() => {
+                                this.video.currentTime = 0; // Retour au début
+                            }, 200);
+                        }, 200);
+                    }, 200);
                 });
 
-                // Améliorer le preloading
+                // Forcer le preloading complet
                 this.video.addEventListener('loadeddata', () => {
                     console.log('✅ Données vidéo disponibles');
                 });
 
-                // Gestion des erreurs
-                this.video.addEventListener('error', (e) => {
-                    console.error('❌ Erreur vidéo:', e);
+                this.video.addEventListener('canplaythrough', () => {
+                    console.log('✅ Vidéo entièrement préchargée');
+                    // Vidéo prête !
+                    this.scrollHint.className = 'scroll-hint ready';
+                    this.scrollHint.textContent = '↓ Faites défiler pour explorer';
                 });
 
                 // Cache des dimensions au resize
@@ -287,7 +312,7 @@
                     this.cacheContainerDimensions();
                 });
 
-                // Gestionnaire de scroll ultra-optimisé
+                // Gestionnaire de scroll super-fluide
                 let scrollTicking = false;
                 window.addEventListener('scroll', () => {
                     if (!scrollTicking && this.isVideoLoaded && !this.isUpdating) {
@@ -299,10 +324,10 @@
                     }
                 }, { passive: true });
 
-                // Preload intelligent
+                // Preload agressif
                 this.video.preload = 'auto';
                 this.video.load();
-                console.log('Preloading vidéo...');
+                console.log('Preloading agressif de la vidéo...');
             }
 
             cacheContainerDimensions() {
@@ -326,33 +351,33 @@
                     const progress = (scrollTop - scrollStart) / scrollRange;
                     const targetTime = progress * this.video.duration;
                     
-                    // Ne mettre à jour que si le changement est significatif (évite les micro-updates)
+                    // Seuil plus tolérant pour éviter les micro-updates
                     const timeDiff = Math.abs(this.video.currentTime - targetTime);
-                    if (timeDiff > 0.15) {
+                    if (timeDiff > 0.3) { // Augmenté de 0.15 à 0.3 pour plus de fluidité
                         this.isUpdating = true;
                         this.video.currentTime = targetTime;
                         this.lastVideoTime = targetTime;
                         
-                        // Débloquer après un court délai
+                        // Débloquer après un délai plus court
                         setTimeout(() => {
                             this.isUpdating = false;
-                        }, 50);
+                        }, 30); // Réduit de 50 à 30ms
                     }
 
-                    // Gestion lecture/pause optimisée
+                    // Gestion lecture/pause très souple
                     this.lastScrollTime = performance.now();
                     
-                    if (this.video.paused && timeDiff > 0.1) {
+                    if (this.video.paused && timeDiff > 0.2) {
                         this.video.play().catch(() => {});
                     }
 
-                    // Pause plus rapide
+                    // Pause plus tardive pour laisser le temps de charger
                     clearTimeout(this.scrollTimeout);
                     this.scrollTimeout = setTimeout(() => {
-                        if (performance.now() - this.lastScrollTime > 80) {
+                        if (performance.now() - this.lastScrollTime > 150) { // Augmenté de 80 à 150ms
                             this.video.pause();
                         }
-                    }, 80);
+                    }, 150);
                 }
             }
         }
