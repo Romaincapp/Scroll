@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marche Interactive - Scroll Video</title>
+    <title>Conteneur Vidéo Scroll</title>
     <style>
         * {
             margin: 0;
@@ -14,202 +14,54 @@
         body {
             font-family: 'Arial', sans-serif;
             overflow-x: hidden;
-        }
-
-        /* Section d'introduction */
-        .intro-section {
-            height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-align: center;
-        }
-
-        .intro-content h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0;
-            animation: fadeInUp 1s ease-out 0.5s forwards;
-        }
-
-        .intro-content p {
-            font-size: 1.2rem;
-            opacity: 0;
-            animation: fadeInUp 1s ease-out 1s forwards;
-        }
-
-        .scroll-indicator {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            font-size: 0.9rem;
-            opacity: 0;
-            animation: fadeInUp 1s ease-out 1.5s forwards, bounce 2s infinite 2.5s;
-        }
-
-        .scroll-indicator::after {
-            content: '↓';
-            display: block;
-            font-size: 1.5rem;
-            margin-top: 10px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
         }
 
         /* Conteneur principal - 2x la hauteur de l'écran */
         .video-scroll-container {
             position: relative;
             height: 200vh; /* 2 fois la hauteur de l'écran */
-            margin: 0 20px; /* Espace sur les côtés */
+            margin: 20px;
             border-radius: 25px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 
                         0 8px 25px rgba(0, 0, 0, 0.2);
             background: #000; /* Fallback pendant le chargement vidéo */
-            transform: translateY(20px);
-            opacity: 0;
-            animation: slideInCard 1s ease-out 0.5s forwards;
-        }
-
-        @keyframes slideInCard {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
         }
 
         /* Vidéo d'arrière-plan */
         .background-video {
             position: fixed;
-            top: 0;
+            top: 20px;
             left: 20px;
             right: 20px;
             width: calc(100% - 40px);
-            height: 100vh;
+            height: calc(100vh - 40px);
             object-fit: cover;
             border-radius: 25px;
             z-index: -1;
         }
 
-        /* Overlay pour le contenu optionnel */
-        .content-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-            z-index: 2;
-        }
-
-        .content-overlay h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-
-        .content-overlay p {
-            font-size: 1.1rem;
-            max-width: 600px;
-            line-height: 1.6;
-            opacity: 0;
-            transition: opacity 0.5s ease 0.2s;
-        }
-
-        /* Section de fin */
-        .end-section {
-            height: 100vh;
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-align: center;
-        }
-
-        .progress-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            z-index: 1000;
-            transition: width 0.1s ease;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateX(-50%) translateY(0);
-            }
-            40% {
-                transform: translateX(-50%) translateY(-10px);
-            }
-            60% {
-                transform: translateX(-50%) translateY(-5px);
-            }
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
-            .intro-content h1 {
-                font-size: 2rem;
-            }
-            
-            .content-overlay h2 {
-                font-size: 1.8rem;
-            }
-            
-            .content-overlay p {
-                font-size: 1rem;
-                padding: 0 20px;
-            }
-
             .video-scroll-container {
-                margin: 0 10px; /* Moins d'espace sur mobile */
-                border-radius: 20px; /* Coins légèrement moins arrondis */
+                margin: 10px;
+                border-radius: 20px;
             }
 
             .background-video {
+                top: 10px;
                 left: 10px;
                 right: 10px;
                 width: calc(100% - 20px);
+                height: calc(100vh - 20px);
                 border-radius: 20px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Barre de progression -->
-    <div class="progress-bar" id="progressBar"></div>
-
-    <!-- Section d'introduction -->
-    <section class="intro-section">
-        <div class="intro-content">
-            <h1>Marche Interactive</h1>
-            <p>Scrollez vers le bas pour commencer votre voyage</p>
-        </div>
-        <div class="scroll-indicator">Scroll pour avancer</div>
-    </section>
-
     <!-- Conteneur principal avec vidéo -->
     <section class="video-scroll-container" id="videoContainer">
         <!-- Vidéo d'arrière-plan -->
@@ -221,20 +73,6 @@
             src="scroll/video/car.mp4">
             Votre navigateur ne supporte pas la vidéo HTML5.
         </video>
-
-        <!-- Contenu optionnel par-dessus la vidéo -->
-        <div class="content-overlay" id="contentOverlay">
-            <h2>Explorez en Scrollant</h2>
-            <p>Chaque mouvement de scroll fait avancer l'histoire. La vidéo se synchronise avec votre navigation pour créer une expérience immersive unique.</p>
-        </div>
-    </section>
-
-    <!-- Section de fin -->
-    <section class="end-section">
-        <div>
-            <h2>Fin du Voyage</h2>
-            <p>Vous avez terminé cette expérience interactive !</p>
-        </div>
     </section>
 
     <script>
@@ -242,8 +80,6 @@
             constructor() {
                 this.video = document.getElementById('backgroundVideo');
                 this.container = document.getElementById('videoContainer');
-                this.progressBar = document.getElementById('progressBar');
-                this.contentOverlay = document.getElementById('contentOverlay');
                 
                 this.isVideoLoaded = false;
                 this.lastScrollTime = 0;
@@ -299,37 +135,7 @@
                             this.video.pause();
                         }
                     }, 150);
-
-                    // Animer le contenu overlay
-                    this.animateOverlay(progress);
-                } else {
-                    // En dehors de la zone vidéo
-                    this.video.pause();
                 }
-
-                // Mettre à jour la barre de progression globale
-                this.updateProgressBar();
-            }
-
-            animateOverlay(progress) {
-                // Faire apparaître le contenu au milieu du scroll
-                const fadeStart = 0.3;
-                const fadeEnd = 0.7;
-                
-                let opacity = 0;
-                if (progress >= fadeStart && progress <= fadeEnd) {
-                    const fadeProgress = (progress - fadeStart) / (fadeEnd - fadeStart);
-                    opacity = Math.sin(fadeProgress * Math.PI); // Effet sinusoïdal pour une apparition douce
-                }
-
-                this.contentOverlay.children[0].style.opacity = opacity;
-                this.contentOverlay.children[1].style.opacity = opacity;
-            }
-
-            updateProgressBar() {
-                const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-                const progress = window.pageYOffset / totalHeight;
-                this.progressBar.style.width = (progress * 100) + '%';
             }
         }
 
@@ -337,9 +143,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             new ScrollVideoController();
         });
-
-        // Smooth scroll pour une meilleure expérience
-        document.documentElement.style.scrollBehavior = 'smooth';
     </script>
 </body>
 </html>
