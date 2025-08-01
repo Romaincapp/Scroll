@@ -18,16 +18,16 @@
             min-height: 100vh;
         }
 
-        /* Conteneur principal - 2x la hauteur de l'écran */
+        /* Conteneur principal - 3x la hauteur de l'écran */
         .video-scroll-container {
             position: relative;
-            height: 200vh; /* 2 fois la hauteur de l'écran */
+            height: 300vh;
             margin: 20px;
             border-radius: 25px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 
                         0 8px 25px rgba(0, 0, 0, 0.2);
-            background: #000; /* Fallback pendant le chargement vidéo */
+            background: #000;
         }
 
         /* Vidéo d'arrière-plan */
@@ -40,7 +40,7 @@
             height: calc(100vh - 40px);
             object-fit: cover;
             border-radius: 25px;
-            z-index: -1;
+            z-index: 1;
         }
 
         /* Responsive */
@@ -70,7 +70,9 @@
             class="background-video" 
             muted 
             preload="metadata"
-            src="video/car.mp4">
+            playsinline>
+            <!-- Remplacez par votre vidéo -->
+            <source src="video/car.mp4" type="video/mp4">
             Votre navigateur ne supporte pas la vidéo HTML5.
         </video>
     </section>
@@ -92,57 +94,84 @@
                 // Attendre que la vidéo soit chargée
                 this.video.addEventListener('loadedmetadata', () => {
                     this.isVideoLoaded = true;
-                    console.log('Vidéo chargée, durée:', this.video.duration);
+                    console.log('Vidéo prête pour le scroll');
                 });
 
-                // Gestionnaire de scroll principal
-                window.addEventListener('scroll', this.handleScroll.bind(this));
-                
-                // Forcer le chargement de la vidéo
+                // Gestionnaire de scroll optimisé
+                let ticking = false;
+                window.addEventListener('scroll', () => {
+                    if (!ticking) {
+                        requestAnimationFrame(() => {
+                            this.handleScroll();
+                            ticking = false;
+                        });
+                        ticking = true;
+                    }
+                });
+
+                // Forcer le chargement
                 this.video.load();
             }
 
             handleScroll() {
-                if (!this.isVideoLoaded) return;
+                if (!this.isVideoLoaded || this.video.duration === 0) return;
 
-                const scrollTop = window.pageYOffset;
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const containerTop = this.container.offsetTop;
                 const containerHeight = this.container.offsetHeight;
                 const windowHeight = window.innerHeight;
 
-                // Calculer si on est dans la zone de la vidéo
-                const containerStart = containerTop;
-                const containerEnd = containerTop + containerHeight - windowHeight;
+                // Calculer la zone de scroll
+                const scrollStart = containerTop;
+                const scrollEnd = containerTop + containerHeight - windowHeight;
+                const scrollRange = scrollEnd - scrollStart;
 
-                if (scrollTop >= containerStart && scrollTop <= containerEnd) {
-                    // On est dans la zone vidéo
-                    const progress = (scrollTop - containerStart) / (containerEnd - containerStart);
-                    const videoTime = progress * this.video.duration;
+                // Vérifier si on est dans la zone vidéo
+                if (scrollTop >= scrollStart && scrollTop <= scrollEnd && scrollRange > 0) {
+                    // Calculer la progression (0 à 1)
+                    const progress = Math.max(0, Math.min(1, (scrollTop - scrollStart) / scrollRange));
+                    
+                    // Synchroniser avec la vidéo
+                    const targetTime = progress * this.video.duration;
+                    const timeDiff = Math.abs(this.video.currentTime - targetTime);
 
-                    // Mettre à jour le temps de la vidéo
-                    this.video.currentTime = videoTime;
-
-                    // Jouer la vidéo pendant le scroll
-                    if (this.video.paused) {
-                        this.video.play().catch(e => console.log('Erreur lecture vidéo:', e));
+                    // Mettre à jour le temps si nécessaire
+                    if (timeDiff > 0.1) {
+                        this.video.currentTime = targetTime;
                     }
 
-                    // Mettre en pause après un délai sans scroll
+                    // Gestion lecture/pause
                     this.lastScrollTime = Date.now();
+                    
+                    if (this.video.paused) {
+                        this.video.play().catch(() => {});
+                    }
+
+                    // Programmer la pause après arrêt du scroll
                     clearTimeout(this.scrollTimeout);
                     this.scrollTimeout = setTimeout(() => {
-                        if (Date.now() - this.lastScrollTime > 150) {
+                        if (Date.now() - this.lastScrollTime > 100) {
                             this.video.pause();
                         }
-                    }, 150);
+                    }, 100);
                 }
             }
         }
 
-        // Initialiser le contrôleur quand la page est chargée
+        // Initialiser
         document.addEventListener('DOMContentLoaded', () => {
             new ScrollVideoController();
         });
+
+        // Débloquer l'autoplay au premier clic
+        document.addEventListener('click', () => {
+            const video = document.getElementById('backgroundVideo');
+            if (video.paused) {
+                video.play().then(() => {
+                    video.pause();
+                }).catch(() => {});
+            }
+        }, { once: true });
     </script>
 </body>
 </html>
