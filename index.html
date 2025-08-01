@@ -269,6 +269,12 @@
                 this.containerHeight = 0;
                 this.windowHeight = window.innerHeight;
                 
+                // Nouveaux: gestion des saccades
+                this.lastScrollY = 0;
+                this.lastProgress = 0;
+                this.scrollDirection = 0; // 1 = down, -1 = up, 0 = statique
+                this.progressHistory = [];
+                
                 this.init();
             }
 
@@ -340,45 +346,77 @@
                 
                 const scrollTop = window.pageYOffset;
                 
-                // Calculer la zone de scroll avec les valeurs cachées
+                // Détecter la direction du scroll
+                const scrollDelta = scrollTop - this.lastScrollY;
+                if (Math.abs(scrollDelta) > 1) { // Ignorer les micro-mouvements
+                    this.scrollDirection = scrollDelta > 0 ? 1 : -1;
+                }
+                this.lastScrollY = scrollTop;
+                
+                // Calculer la zone de scroll
                 const scrollStart = this.containerTop;
                 const scrollEnd = this.containerTop + this.containerHeight - this.windowHeight;
                 const scrollRange = scrollEnd - scrollStart;
 
-                // Vérifier si on est dans la zone vidéo
                 if (scrollTop >= scrollStart && scrollTop <= scrollEnd && scrollRange > 0) {
                     // Calculer la progression
-                    const progress = (scrollTop - scrollStart) / scrollRange;
-                    const targetTime = progress * this.video.duration;
+                    const rawProgress = (scrollTop - scrollStart) / scrollRange;
                     
-                    // Seuil plus tolérant pour éviter les micro-updates
-                    const timeDiff = Math.abs(this.video.currentTime - targetTime);
-                    if (timeDiff > 0.3) { // Augmenté de 0.15 à 0.3 pour plus de fluidité
+                    // Système de lissage : moyenner avec l'historique
+                    this.progressHistory.push(rawProgress);
+                    if (this.progressHistory.length > 3) {
+                        this.progressHistory.shift(); // Garder seulement les 3 dernières valeurs
+                    }
+                    
+                    // Progression lissée
+                    const smoothProgress = this.progressHistory.reduce((a, b) => a + b, 0) / this.progressHistory.length;
+                    const targetTime = smoothProgress * this.video.duration;
+                    
+                    // Protection anti-retour en arrière non voulu
+                    const currentTime = this.video.currentTime;
+                    const timeDiff = Math.abs(currentTime - targetTime);
+                    const isProgressForward = smoothProgress > this.lastProgress;
+                    
+                    // Ne mettre à jour QUE si :
+                    // 1. Le changement est significatif ET
+                    // 2. On va dans la bonne direction OU le saut est vraiment important
+                    if (timeDiff > 0.4 && (
+                        (isProgressForward && this.scrollDirection === 1) || // Scroll down = vidéo avance
+                        (!isProgressForward && this.scrollDirection === -1) || // Scroll up = vidéo recule
+                        timeDiff > 2 // Saut important = probablement voulu
+                    )) {
                         this.isUpdating = true;
-                        this.video.currentTime = targetTime;
-                        this.lastVideoTime = targetTime;
                         
-                        // Débloquer après un délai plus court
+                        // Transition douce au lieu d'un saut brutal
+                        const smoothTargetTime = this.lerp(currentTime, targetTime, 0.3);
+                        this.video.currentTime = smoothTargetTime;
+                        this.lastVideoTime = smoothTargetTime;
+                        this.lastProgress = smoothProgress;
+                        
                         setTimeout(() => {
                             this.isUpdating = false;
-                        }, 30); // Réduit de 50 à 30ms
+                        }, 40);
                     }
 
-                    // Gestion lecture/pause très souple
+                    // Gestion lecture/pause
                     this.lastScrollTime = performance.now();
                     
                     if (this.video.paused && timeDiff > 0.2) {
                         this.video.play().catch(() => {});
                     }
 
-                    // Pause plus tardive pour laisser le temps de charger
                     clearTimeout(this.scrollTimeout);
                     this.scrollTimeout = setTimeout(() => {
-                        if (performance.now() - this.lastScrollTime > 150) { // Augmenté de 80 à 150ms
+                        if (performance.now() - this.lastScrollTime > 120) {
                             this.video.pause();
                         }
-                    }, 150);
+                    }, 120);
                 }
+            }
+
+            // Fonction de lissage (interpolation linéaire)
+            lerp(start, end, factor) {
+                return start + (end - start) * factor;
             }
         }
 
