@@ -41,6 +41,10 @@
             object-fit: cover;
             border-radius: 25px;
             z-index: 1;
+            /* Optimisations GPU */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
         /* Responsive */
@@ -69,9 +73,10 @@
             id="backgroundVideo" 
             class="background-video" 
             muted 
-            preload="metadata"
+            preload="auto"
             playsinline
-            crossorigin="anonymous">
+            crossorigin="anonymous"
+            style="will-change: transform;">
             <!-- Vidéo de test qui fonctionne -->
             <source src="https://videos.pexels.com/video-files/14066876/14066876-hd_806_1440_30fps.mp4" type="video/mp4">
             <!-- Votre vidéo GitHub (à tester) -->
@@ -89,6 +94,13 @@
                 this.isVideoLoaded = false;
                 this.lastScrollTime = 0;
                 this.scrollTimeout = null;
+                this.lastVideoTime = 0;
+                this.isUpdating = false;
+                
+                // Cache des calculs
+                this.containerTop = 0;
+                this.containerHeight = 0;
+                this.windowHeight = window.innerHeight;
                 
                 this.init();
             }
@@ -101,78 +113,91 @@
                 this.video.addEventListener('loadedmetadata', () => {
                     this.isVideoLoaded = true;
                     console.log('✅ Vidéo chargée ! Durée:', this.video.duration, 'secondes');
+                    this.cacheContainerDimensions();
+                });
+
+                // Améliorer le preloading
+                this.video.addEventListener('loadeddata', () => {
+                    console.log('✅ Données vidéo disponibles');
                 });
 
                 // Gestion des erreurs
                 this.video.addEventListener('error', (e) => {
                     console.error('❌ Erreur vidéo:', e);
-                    console.error('Code erreur:', this.video.error?.code);
-                    console.error('Message:', this.video.error?.message);
                 });
 
-                // Vérifier si la vidéo peut être lue
-                this.video.addEventListener('canplay', () => {
-                    console.log('✅ Vidéo prête à être lue');
+                // Cache des dimensions au resize
+                window.addEventListener('resize', () => {
+                    this.windowHeight = window.innerHeight;
+                    this.cacheContainerDimensions();
                 });
 
-                // Gestionnaire de scroll optimisé
-                let ticking = false;
+                // Gestionnaire de scroll ultra-optimisé
+                let scrollTicking = false;
                 window.addEventListener('scroll', () => {
-                    if (!ticking) {
+                    if (!scrollTicking && this.isVideoLoaded && !this.isUpdating) {
                         requestAnimationFrame(() => {
                             this.handleScroll();
-                            ticking = false;
+                            scrollTicking = false;
                         });
-                        ticking = true;
+                        scrollTicking = true;
                     }
-                });
+                }, { passive: true });
 
-                // Forcer le chargement
+                // Preload intelligent
+                this.video.preload = 'auto';
                 this.video.load();
-                console.log('Chargement de la vidéo demandé...');
+                console.log('Preloading vidéo...');
+            }
+
+            cacheContainerDimensions() {
+                this.containerTop = this.container.offsetTop;
+                this.containerHeight = this.container.offsetHeight;
             }
 
             handleScroll() {
-                if (!this.isVideoLoaded || this.video.duration === 0) return;
-
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const containerTop = this.container.offsetTop;
-                const containerHeight = this.container.offsetHeight;
-                const windowHeight = window.innerHeight;
-
-                // Calculer la zone de scroll
-                const scrollStart = containerTop;
-                const scrollEnd = containerTop + containerHeight - windowHeight;
+                if (this.isUpdating) return;
+                
+                const scrollTop = window.pageYOffset;
+                
+                // Calculer la zone de scroll avec les valeurs cachées
+                const scrollStart = this.containerTop;
+                const scrollEnd = this.containerTop + this.containerHeight - this.windowHeight;
                 const scrollRange = scrollEnd - scrollStart;
 
                 // Vérifier si on est dans la zone vidéo
                 if (scrollTop >= scrollStart && scrollTop <= scrollEnd && scrollRange > 0) {
-                    // Calculer la progression (0 à 1)
-                    const progress = Math.max(0, Math.min(1, (scrollTop - scrollStart) / scrollRange));
-                    
-                    // Synchroniser avec la vidéo
+                    // Calculer la progression
+                    const progress = (scrollTop - scrollStart) / scrollRange;
                     const targetTime = progress * this.video.duration;
+                    
+                    // Ne mettre à jour que si le changement est significatif (évite les micro-updates)
                     const timeDiff = Math.abs(this.video.currentTime - targetTime);
-
-                    // Mettre à jour le temps si nécessaire
-                    if (timeDiff > 0.1) {
+                    if (timeDiff > 0.15) {
+                        this.isUpdating = true;
                         this.video.currentTime = targetTime;
+                        this.lastVideoTime = targetTime;
+                        
+                        // Débloquer après un court délai
+                        setTimeout(() => {
+                            this.isUpdating = false;
+                        }, 50);
                     }
 
-                    // Gestion lecture/pause
-                    this.lastScrollTime = Date.now();
+                    // Gestion lecture/pause optimisée
+                    this.lastScrollTime = performance.now();
                     
-                    if (this.video.paused) {
+                    if (this.video.paused && timeDiff > 0.1) {
                         this.video.play().catch(() => {});
                     }
 
-                    // Programmer la pause après arrêt du scroll
+                    // Pause plus rapide
                     clearTimeout(this.scrollTimeout);
                     this.scrollTimeout = setTimeout(() => {
-                        if (Date.now() - this.lastScrollTime > 100) {
+                        if (performance.now() - this.lastScrollTime > 80) {
                             this.video.pause();
                         }
-                    }, 100);
+                    }, 80);
                 }
             }
         }
