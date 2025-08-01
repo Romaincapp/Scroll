@@ -70,9 +70,12 @@
             class="background-video" 
             muted 
             preload="metadata"
-            playsinline>
-            <!-- Remplacez par votre vidéo -->
-            <source src="video/car.mp4" type="video/mp4">
+            playsinline
+            crossorigin="anonymous">
+            <!-- Vidéo de test qui fonctionne -->
+            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+            <!-- Votre vidéo GitHub (à tester) -->
+            <!-- <source src="video/car.mp4" type="video/mp4"> -->
             Votre navigateur ne supporte pas la vidéo HTML5.
         </video>
     </section>
@@ -91,10 +94,25 @@
             }
 
             init() {
+                // Logs de debug
+                console.log('Initialisation du contrôleur vidéo...');
+                
                 // Attendre que la vidéo soit chargée
                 this.video.addEventListener('loadedmetadata', () => {
                     this.isVideoLoaded = true;
-                    console.log('Vidéo prête pour le scroll');
+                    console.log('✅ Vidéo chargée ! Durée:', this.video.duration, 'secondes');
+                });
+
+                // Gestion des erreurs
+                this.video.addEventListener('error', (e) => {
+                    console.error('❌ Erreur vidéo:', e);
+                    console.error('Code erreur:', this.video.error?.code);
+                    console.error('Message:', this.video.error?.message);
+                });
+
+                // Vérifier si la vidéo peut être lue
+                this.video.addEventListener('canplay', () => {
+                    console.log('✅ Vidéo prête à être lue');
                 });
 
                 // Gestionnaire de scroll optimisé
@@ -111,6 +129,7 @@
 
                 // Forcer le chargement
                 this.video.load();
+                console.log('Chargement de la vidéo demandé...');
             }
 
             handleScroll() {
